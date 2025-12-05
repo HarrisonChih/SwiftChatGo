@@ -1,6 +1,7 @@
 package main
 
 import (
+	"ginchat/config"
 	_ "ginchat/docs"
 	"ginchat/models"
 	"ginchat/router"
@@ -22,7 +23,10 @@ func main() {
 	r.Run(viper.GetString("port.server"))
 }
 
-// 初始化定时器
+// 初始化定时器（使用全局配置）
 func InitTimer() {
-	utils.Timer(time.Duration(viper.GetInt("timeout.DelayHeartbeat"))*time.Second, time.Duration(viper.GetInt("timeout.HeartbeatHz"))*time.Second, models.CleanConnection, "")
+	// 从全局配置获取超时参数
+	delay := time.Duration(config.GlobalConfig.Timeout.DelayHeartbeat) * time.Second
+	tick := time.Duration(config.GlobalConfig.Timeout.HeartbeatHz) * time.Second
+	utils.Timer(delay, tick, models.CleanConnection, "")
 }

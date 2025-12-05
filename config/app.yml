@@ -1,6 +1,20 @@
+# 应用配置
+app:
+  env: dev  # 环境：dev/test/prod
+  log_level: info  # 日志级别：debug/info/warn/error
+
+# JWT配置
+jwt:
+  secret: "your_jwt_secret_key"  # 生产环境建议通过环境变量设置
+  expire: 24h
+
+# MySQL配置
 mysql:
   dsn: root:123456@tcp(127.0.0.1:3306)/ginchat?charset=utf8&parseTime=True&loc=Local
+  max_open_conns: 100  # 最大打开连接数
+  max_idle_conns: 20   # 最大空闲连接数
 
+# Redis配置（保持不变）
 redis:
   addr: "127.0.0.1:6379"
   password: ""
@@ -8,18 +22,24 @@ redis:
   poolSize: 30
   minIdleConn: 30
 
+# 其他配置保持不变...
 oss:
   Endpoint: "oss-cn-hangzhou.aliyuncs.com"
   AccessKeyId: "LTAI5tNCXPJwS3MstKoKgixh"
   AccessKeySecret: "YhHE8OyCMsqfjwOnxQ1oO7paYlDjVHX"
   Bucket : "ginchat"
 
-timeout:
-  DelayHeartbeat: 3   #延迟心跳时间  单位秒
-  HeartbeatHz: 30   #每隔多少秒心跳时间
-  HeartbeatMaxTime: 30000  #最大心跳时间  ，超过此就下线
-  RedisOnlineTime: 4  #缓存的在线用户时长   单位H
-
 port:
   server: ":8081"
   udp: 3000
+
+timeout:
+  DelayHeartbeat: 3   #延迟心跳时间  单位秒
+  HeartbeatHz: 30   #每隔多少秒心跳时间
+  HeartbeatMaxTime: 30s  #最大心跳时间  ，超过此就下线
+  RedisOnlineTime: 4  #缓存的在线用户时长   单位H
+
+  # UDP配置（新增）
+udp:
+  target_ip: "58.198.176.23"  # 目标服务器IP（可通过环境变量 GINCHAT_UDP_TARGET_IP 覆盖）
+  target_port: 3000           # 目标服务器端口（可通过环境变量 GINCHAT_UDP_TARGET_PORT 覆盖）

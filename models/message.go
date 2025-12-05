@@ -3,12 +3,12 @@ package models
 import (
 	"context"
 	"fmt"
+	"ginchat/config"
 	"ginchat/utils"
 	"github.com/fatih/set"
 	"github.com/goccy/go-json"
 	"github.com/gorilla/websocket"
 	"github.com/redis/go-redis/v9"
-	"github.com/spf13/viper"
 	"gorm.io/gorm"
 	"net"
 	"net/http"
@@ -155,9 +155,12 @@ func init() {
 
 // udpSendProc：UDP发送协程（向指定UDP地址广播消息）
 func udpSendProc() {
+	targetIP := config.GlobalConfig.UDP.TargetIP
+	targetPort := config.GlobalConfig.UDP.TargetPort
+
 	con, err := net.DialUDP("udp", nil, &net.UDPAddr{
-		IP:   net.IPv4(58, 198, 176, 23),
-		Port: 3000,
+		IP:   net.ParseIP(targetIP),
+		Port: targetPort,
 	})
 	defer con.Close()
 	if err != nil {
@@ -180,7 +183,7 @@ func udpSendProc() {
 func udpRecvProc() {
 	con, err := net.ListenUDP("udp", &net.UDPAddr{
 		IP:   net.IPv4zero,
-		Port: viper.GetInt("port.udp"),
+		Port: config.GlobalConfig.Port.UDP,
 	})
 	if err != nil {
 		fmt.Println(err)
@@ -340,7 +343,7 @@ func CleanConnection(param interface{}) (result bool) {
 	for i := range clientMap {
 		node := clientMap[i]
 		if node.IsHeartbeatTimeOut(currentTime) {
-			fmt.Println("心跳超时..... 关闭连接：", node)
+			fmt.Println("心跳超时......关闭连接：", node)
 			node.Conn.Close()
 		}
 	}
@@ -349,8 +352,8 @@ func CleanConnection(param interface{}) (result bool) {
 
 // 用户心跳是否超时
 func (node *Node) IsHeartbeatTimeOut(currentTime uint64) (timeout bool) {
-	if node.HeartbeatTime+viper.GetUint64("timeout.HeartbeatMaxTime") <= currentTime {
-		fmt.Println("心跳超时。。。自动下线", node)
+	if node.HeartbeatTime+uint64(config.GlobalConfig.Timeout.HeartbeatMaxTime.Seconds()) <= currentTime {
+		fmt.Println("心跳超时......自动下线", node)
 		timeout = true
 	}
 	return

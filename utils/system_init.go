@@ -3,14 +3,15 @@ package utils
 import (
 	"context"
 	"fmt"
+	"ginchat/config"
 	"github.com/redis/go-redis/v9"
 	"github.com/redis/go-redis/v9/maintnotifications"
 	"gorm.io/gorm/logger"
 	"log"
 	"os"
+	"strings"
 	"time"
 
-	//"ginchat/models"
 	"github.com/spf13/viper"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -21,15 +22,29 @@ var (
 	Red *redis.Client
 )
 
+// 初始化配置（加载到全局结构体）
 func InitConfig() {
+	// 设置配置文件
 	viper.SetConfigName("app")
 	viper.AddConfigPath("config")
-	err := viper.ReadInConfig()
-	if err != nil {
-		fmt.Println(err)
-	}
-	fmt.Println("config app inited.")
+	viper.SetConfigType("yaml")
 
+	// 读取配置文件
+	if err := viper.ReadInConfig(); err != nil {
+		panic(fmt.Sprintf("读取配置文件失败: %v", err))
+	}
+
+	// 支持环境变量覆盖（例如：将配置文件中的mysql.dsn映射为环境变量MYSQL_DSN）
+	viper.AutomaticEnv()
+	viper.SetEnvPrefix("ginchat")                          // 环境变量前缀，避免冲突
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_")) // 将点分隔转换为下划线
+
+	// 解析配置到全局结构体
+	if err := viper.Unmarshal(&config.GlobalConfig); err != nil {
+		panic(fmt.Sprintf("解析配置失败: %v", err))
+	}
+
+	fmt.Println("配置加载完成:", config.GlobalConfig)
 }
 
 func InitMySQL() {
@@ -43,23 +58,31 @@ func InitMySQL() {
 		},
 	)
 
-	DB, _ = gorm.Open(mysql.Open(viper.GetString("mysql.dsn")), &gorm.Config{Logger: newLogger})
-	/*if err != nil {
-		panic("failed to connect database")
-	}*/
-	//user := models.UserBasic{}
-	//DB.Find(&user)
-	fmt.Println("config mysql inited.")
+	// 使用全局配置中的MySQL DSN
+	db, err := gorm.Open(mysql.Open(config.GlobalConfig.MySQL.DSN), &gorm.Config{
+		Logger: newLogger,
+	})
+	if err != nil {
+		panic(fmt.Sprintf("初始化MySQL失败: %v", err))
+	}
+
+	// 设置连接池（新增）
+	sqlDB, _ := db.DB()
+	sqlDB.SetMaxOpenConns(config.GlobalConfig.MySQL.MaxOpenConns)
+	sqlDB.SetMaxIdleConns(config.GlobalConfig.MySQL.MaxIdleConns)
+
+	DB = db
+	fmt.Println("MySQL初始化完成")
 }
 
 func InitRedis() {
 
 	Red = redis.NewClient(&redis.Options{
-		Addr:         viper.GetString("redis.addr"),
-		Password:     viper.GetString("redis.password"),
-		DB:           viper.GetInt("redis.DB"),
-		PoolSize:     viper.GetInt("redis.poolSize"),
-		MinIdleConns: viper.GetInt("redis.minIdleConn"),
+		Addr:         config.GlobalConfig.Redis.Addr,
+		Password:     config.GlobalConfig.Redis.Password,
+		DB:           config.GlobalConfig.Redis.DB,
+		PoolSize:     config.GlobalConfig.Redis.PoolSize,
+		MinIdleConns: config.GlobalConfig.Redis.MinIdleConns,
 		MaintNotificationsConfig: &maintnotifications.Config{
 			Mode: maintnotifications.ModeDisabled,
 		},
@@ -67,10 +90,9 @@ func InitRedis() {
 
 	pong, err := Red.Ping(context.Background()).Result()
 	if err != nil {
-		fmt.Println("config redis init unsuccessfully: ", err)
-	} else {
-		fmt.Println("config redis inited: ", pong)
+		panic(fmt.Sprintf("初始化Redis失败: %v", err))
 	}
+	fmt.Println("Redis初始化完成:", pong)
 }
 
 const (
