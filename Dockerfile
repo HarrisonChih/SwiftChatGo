@@ -1,29 +1,41 @@
-# 阶段1：编译 Go 代码
-FROM golang:1.21-alpine AS builder
-WORKDIR /app
-# 复制依赖文件并下载
-COPY go.mod go.sum ./
-RUN go mod download
-# 复制项目代码
-COPY . .
-# 编译（禁用 CGO 确保静态链接，适配 alpine）
-RUN CGO_ENABLED=0 GOOS=linux go build -o swiftchat main.go
+# 阶段 1：编译 Go 代码（仅定义一次 builder 阶段）
+FROM golang:1.24-alpine AS builder
 
-# 阶段2：构建轻量镜像
-FROM alpine:latest
-# 安装必要工具（如 CA 证书，用于 HTTPS 连接）
-RUN apk --no-cache add ca-certificates tzdata
 # 设置工作目录
 WORKDIR /app
-# 从编译阶段复制二进制文件
+
+# 复制依赖文件并下载
+COPY go.mod go.sum ./
+ENV GOPROXY=https://goproxy.cn,direct
+RUN go mod download
+
+# 复制项目所有代码
+COPY . .
+
+# 编译 Go 程序（禁用 CGO 确保静态链接）
+RUN CGO_ENABLED=0 GOOS=linux go build -o swiftchat main.go
+
+
+# 阶段 2：构建运行镜像（仅引用已定义的 builder 阶段，无循环）
+FROM alpine:3.18
+
+# 设置工作目录
+WORKDIR /app
+
+# 从 builder 阶段复制编译好的二进制文件（关键：builder 已在阶段 1 定义，无循环）
 COPY --from=builder /app/swiftchat .
-# 复制配置文件、静态资源、视图模板
+
+# 复制项目必需的配置、静态资源和视图
 COPY config/ ./config/
 COPY views/ ./views/
 COPY asset/ ./asset/
-# 创建上传目录并赋予权限
+COPY --from=builder /app/index.html ./
+
+# 创建上传目录并授权（对应 attach.go 中的上传路径）
 RUN mkdir -p ./asset/upload && chmod 777 ./asset/upload
-# 暴露项目端口（与 config/app.yml 中一致）
+
+# 暴露端口（与 config/app.yml 中的 port.server 一致）
 EXPOSE 8081
+
 # 启动命令
 CMD ["./swiftchat"]
