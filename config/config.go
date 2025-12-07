@@ -44,7 +44,7 @@ type OSSConfig struct {
 type TimeoutConfig struct {
 	DelayHeartbeat   int           `mapstructure:"DelayHeartbeat"`
 	HeartbeatHz      int           `mapstructure:"HeartbeatHz"`
-	HeartbeatMaxTime time.Duration `mapstructure:"HeartbeatMaxTime" default:"30s"` // 转换为Duration
+	HeartbeatMaxTime time.Duration `mapstructure:"HeartbeatMaxTime" default:"3000s"` // 转换为Duration
 	RedisOnlineTime  int           `mapstructure:"RedisOnlineTime"`
 }
 

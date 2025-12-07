@@ -4,3 +4,4 @@
 ## 项目功能：
 
 ## 项目配置：
+docker run -d --name swiftchat -p 8081:8081 --link mysql:mysql --link redis:redis -v /data/swiftchat/upload:/app/asset/upload --restart always swiftchat:latest
